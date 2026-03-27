@@ -38,3 +38,6 @@ url=../tgcalls.git
 [submodule "build-system/bazel-rules/sourcekit-bazel-bsp"]
 	path = build-system/bazel-rules/sourcekit-bazel-bsp
 	url = https://github.com/spotify/sourcekit-bazel-bsp.git
+[submodule "third-party/vless/vless-lib"]
+	path = third-party/vless/vless-lib
+	url = https://github.com/farit2000/vless-lib.git
