@@ -210,6 +210,7 @@ swift_library(
         "//submodules/WidgetItems:WidgetItems",
         "//submodules/WidgetItemsUtils:WidgetItemsUtils",
         "//submodules/OpenSSLEncryptionProvider:OpenSSLEncryptionProvider",
+        "//submodules/VlessTransport",
         "//submodules/PhoneNumberFormat:PhoneNumberFormat",
         "//submodules/AppLock:AppLock",
         "//submodules/NotificationsPresentationData:NotificationsPresentationData",

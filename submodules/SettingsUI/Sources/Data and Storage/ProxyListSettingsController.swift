@@ -284,6 +284,8 @@ private func proxySettingsControllerEntries(theme: PresentationTheme, strings: P
                     text = strings.ChatSettings_ConnectionType_UseSocks5
                 case .mtp:
                     text = strings.SocksProxySetup_ProxyTelegram
+                case .vless:
+                    text = "VLESS"
             }
             switch status {
                 case .notAvailable:
@@ -544,6 +546,8 @@ public func proxySettingsController(accountManager: AccountManager<TelegramAccou
                         if let username = username, let password = password {
                             string += "&user=\((username as NSString).addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryValueAllowed) ?? "")&pass=\((password as NSString).addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryValueAllowed) ?? "")"
                         }
+                    case let .vless(uuid, publicKey, shortId, serverName):
+                        string = "vless://\(uuid)@\(server.host):\(server.port)?security=reality&pbk=\(publicKey)&sid=\(shortId)&sni=\(serverName)&fp=chrome&type=tcp&flow=xtls-rprx-vision"
                     }
                     
                     result += string

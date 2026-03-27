@@ -11,6 +11,7 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <CommonCrypto/CommonHMac.h>
 #import <Security/SecRandom.h>
+#import <os/log.h>
 
 #import <MtProtoKit/MTInternalId.h>
 
@@ -770,6 +771,9 @@ struct ctr_state {
     int32_t _mtpPort;
     MTProxySecret *_mtpSecret;
     NSData *_helloRandom;
+
+    MTVlessProxySettings *_vlessSettings;
+    int (^_vlessConnectFd)(NSString *, uint16_t);
     NSData *_currentHelloResponse;
     
     MTMetaDisposable *_resolveDisposable;
@@ -832,7 +836,16 @@ struct ctr_state {
             _mtpSecret = [MTProxySecret parseData:_scheme.address.secret];
         }
         
-        if (context.apiEnvironment.socksProxySettings != nil) {
+        if (context.apiEnvironment.vlessProxySettings != nil) {
+            _mtpIp = nil;
+            _mtpPort = 0;
+            _mtpSecret = nil;
+            _vlessSettings = context.apiEnvironment.vlessProxySettings;
+            if (_vlessSettings != nil) {
+                _vlessConnectFd = _vlessSettings.connectFd;
+            }
+            os_log(OS_LOG_DEFAULT, "[VLESS] init: vlessSettings=%d connectFd=%d ctx=%p", _vlessSettings != nil, _vlessConnectFd != nil, context);
+        } else if (context.apiEnvironment.socksProxySettings != nil) {
             if (context.apiEnvironment.socksProxySettings.secret != nil) {
                 _mtpIp = context.apiEnvironment.socksProxySettings.ip;
                 _mtpPort = context.apiEnvironment.socksProxySettings.port;
@@ -996,7 +1009,24 @@ struct ctr_state {
                     }
                     
                     __autoreleasing NSError *error = nil;
-                    if (![strongSelf->_socket connectToHost:connectionData.ip onPort:connectionData.port viaInterface:strongSelf->_interface withTimeout:12 error:&error] || error != nil) {
+                    if (strongSelf->_vlessConnectFd != nil) {
+                        // VLESS: connectFd returns local proxy port
+                        uint16_t listenPort = (uint16_t)strongSelf->_vlessConnectFd(connectionData.ip, connectionData.port);
+
+                        if (listenPort == 0) {
+                            [strongSelf closeAndNotifyWithError:true];
+                        } else if (![strongSelf->_socket connectToHost:@"127.0.0.1" onPort:listenPort viaInterface:nil withTimeout:30 error:&error] || error != nil) {
+                            [strongSelf closeAndNotifyWithError:true];
+                        } else {
+                            strongSelf->_readyToSendData = true;
+                            [strongSelf sendDataIfNeeded];
+                            if (strongSelf->_useIntermediateFormat) {
+                                [strongSelf requestReadDataWithLength:4 tag:MTTcpReadTagPacketFullLength];
+                            } else {
+                                [strongSelf requestReadDataWithLength:1 tag:MTTcpReadTagPacketShortLength];
+                            }
+                        }
+                    } else if (![strongSelf->_socket connectToHost:connectionData.ip onPort:connectionData.port viaInterface:strongSelf->_interface withTimeout:12 error:&error] || error != nil) {
                         [strongSelf closeAndNotifyWithError:true];
                     } else if (strongSelf->_socksIp == nil) {
                         if (strongSelf->_mtpIp != nil && [strongSelf->_mtpSecret isKindOfClass:[MTProxySecretType2 class]]) {
@@ -1313,6 +1343,7 @@ struct ctr_state {
     
     [[MTTcpConnection tcpQueue] dispatchOnQueue:^{
         [_pendingDataQueue addObject:[[MTTcpSendData alloc] initWithDataSet:datas completion:completion requestQuickAck:requestQuickAck expectDataInResponse:expectDataInResponse]];
+        os_log(OS_LOG_DEFAULT, "[VLESS-SEND] sendDatas: readyToSend=%d queueSize=%lu vless=%d", _readyToSendData, (unsigned long)_pendingDataQueue.count, _vlessConnectFd != nil);
         if (_readyToSendData) {
             [self sendDataIfNeeded];
         }

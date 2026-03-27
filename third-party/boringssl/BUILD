@@ -175,6 +175,7 @@ cc_library(
     }),
     visibility = ["//visibility:public"],
     linkstatic = 1,
+    alwayslink = True,
 )
 
 cc_library(
@@ -186,6 +187,7 @@ cc_library(
         ":crypto",
         ":ssl_headers",
     ],
+    alwayslink = True,
 )
 
 cc_binary(

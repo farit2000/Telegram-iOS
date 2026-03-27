@@ -317,6 +317,8 @@ private final class ProxyServerPreviewSheetContent: CombinedComponent {
                         MultilineTextComponent(text: .plain(NSAttributedString(string: "•••••", font: tableFont, textColor: tableTextColor)))
                     )
                 ))
+            case .vless:
+                break
             }
             
             var statusText = strings.SocksProxySetup_CheckStatus

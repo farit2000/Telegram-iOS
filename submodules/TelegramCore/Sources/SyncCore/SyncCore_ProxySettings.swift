@@ -4,7 +4,8 @@ import Postbox
 public enum ProxyServerConnection: Equatable, Hashable, Codable {
     case socks5(username: String?, password: String?)
     case mtp(secret: Data)
-    
+    case vless(uuid: String, publicKey: String, shortId: String, serverName: String)
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: StringCodingKey.self)
 
@@ -13,11 +14,18 @@ public enum ProxyServerConnection: Equatable, Hashable, Codable {
                 self = .socks5(username: try container.decodeIfPresent(String.self, forKey: "username"), password: try container.decodeIfPresent(String.self, forKey: "password"))
             case 1:
                 self = .mtp(secret: try container.decode(Data.self, forKey: "secret"))
+            case 2:
+                self = .vless(
+                    uuid: try container.decode(String.self, forKey: "uuid"),
+                    publicKey: try container.decode(String.self, forKey: "publicKey"),
+                    shortId: try container.decode(String.self, forKey: "shortId"),
+                    serverName: try container.decode(String.self, forKey: "serverName")
+                )
             default:
                 self = .socks5(username: nil, password: nil)
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: StringCodingKey.self)
 
@@ -29,6 +37,12 @@ public enum ProxyServerConnection: Equatable, Hashable, Codable {
             case let .mtp(secret):
                 try container.encode(1 as Int32, forKey: "_t")
                 try container.encode(secret, forKey: "secret")
+            case let .vless(uuid, publicKey, shortId, serverName):
+                try container.encode(2 as Int32, forKey: "_t")
+                try container.encode(uuid, forKey: "uuid")
+                try container.encode(publicKey, forKey: "publicKey")
+                try container.encode(shortId, forKey: "shortId")
+                try container.encode(serverName, forKey: "serverName")
         }
     }
 }

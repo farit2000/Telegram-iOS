@@ -290,6 +290,35 @@ static NSData *base64_decode(NSString *str) {
 
 @end
 
+@implementation MTVlessProxySettings
+
+- (instancetype)initWithIp:(NSString *)ip port:(uint16_t)port uuid:(NSString *)uuid publicKey:(NSString *)publicKey shortId:(NSString *)shortId serverName:(NSString *)serverName connectFd:(int (^)(NSString *, uint16_t))connectFd {
+    self = [super init];
+    if (self != nil) {
+        _ip = ip;
+        _port = port;
+        _uuid = uuid;
+        _publicKey = publicKey;
+        _shortId = shortId;
+        _serverName = serverName;
+        _connectFd = [connectFd copy];
+    }
+    return self;
+}
+
+- (BOOL)isEqual:(id)object {
+    if (![object isKindOfClass:[MTVlessProxySettings class]]) {
+        return false;
+    }
+    MTVlessProxySettings *other = object;
+    return [_ip isEqual:other->_ip] && _port == other->_port &&
+           [_uuid isEqual:other->_uuid] && [_publicKey isEqual:other->_publicKey] &&
+           [_shortId isEqual:other->_shortId] && [_serverName isEqual:other->_serverName] &&
+           (_connectFd != nil) == (other->_connectFd != nil);
+}
+
+@end
+
 @implementation MTSocksProxySettings
 
 - (instancetype)initWithIp:(NSString *)ip port:(uint16_t)port username:(NSString *)username password:(NSString *)password secret:(NSData *)secret {
@@ -805,6 +834,7 @@ NSString *suffix = @"";
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
     result->_socksProxySettings = self.socksProxySettings;
+    result->_vlessProxySettings = self.vlessProxySettings;
     result->_networkSettings = self.networkSettings;
     result->_systemCode = self.systemCode;
     
@@ -824,6 +854,7 @@ NSString *suffix = @"";
     
     result->_langPackCode = self.langPackCode;
     result->_socksProxySettings = self.socksProxySettings;
+    result->_vlessProxySettings = self.vlessProxySettings;
     result->_networkSettings = self.networkSettings;
     result->_systemCode = self.systemCode;
     
@@ -848,6 +879,7 @@ NSString *suffix = @"";
     
     result->_langPackCode = self.langPackCode;
     result->_socksProxySettings = socksProxySettings;
+    result->_vlessProxySettings = self.vlessProxySettings;
     result->_networkSettings = self.networkSettings;
     result->_systemCode = self.systemCode;
     
@@ -858,6 +890,31 @@ NSString *suffix = @"";
     
     [result _updateApiInitializationHash];
     
+    return result;
+}
+
+- (MTApiEnvironment *)withUpdatedVlessProxySettings:(MTVlessProxySettings *)vlessProxySettings {
+    MTApiEnvironment *result =  [[MTApiEnvironment alloc] initWithDeviceModelName:_deviceModelName];
+
+    result.apiId = self.apiId;
+    result.appVersion = self.appVersion;
+    result.layer = self.layer;
+
+    result.langPack = self.langPack;
+
+    result->_langPackCode = self.langPackCode;
+    result->_socksProxySettings = self.socksProxySettings;
+    result->_vlessProxySettings = vlessProxySettings;
+    result->_networkSettings = self.networkSettings;
+    result->_systemCode = self.systemCode;
+
+    result.disableUpdates = self.disableUpdates;
+    result.tcpPayloadPrefix = self.tcpPayloadPrefix;
+    result.datacenterAddressOverrides = self.datacenterAddressOverrides;
+    result.accessHostOverride = self.accessHostOverride;
+
+    [result _updateApiInitializationHash];
+
     return result;
 }
 
@@ -872,9 +929,10 @@ NSString *suffix = @"";
     
     result->_langPackCode = self.langPackCode;
     result->_socksProxySettings = self.socksProxySettings;
+    result->_vlessProxySettings = self.vlessProxySettings;
     result->_networkSettings = networkSettings;
     result->_systemCode = self.systemCode;
-    
+
     result.disableUpdates = self.disableUpdates;
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
@@ -896,6 +954,7 @@ NSString *suffix = @"";
     
     result->_langPackCode = self.langPackCode;
     result->_socksProxySettings = self.socksProxySettings;
+    result->_vlessProxySettings = self.vlessProxySettings;
     result->_networkSettings = self.networkSettings;
     result->_systemCode = systemCode;
     
@@ -907,6 +966,16 @@ NSString *suffix = @"";
     [result _updateApiInitializationHash];
     
     return result;
+}
+
+static int (^_globalVlessConnectFd)(NSString *, uint16_t) = nil;
+
++ (void)setGlobalVlessConnectFd:(int (^)(NSString *, uint16_t))block {
+    _globalVlessConnectFd = [block copy];
+}
+
++ (int (^)(NSString *, uint16_t))globalVlessConnectFd {
+    return _globalVlessConnectFd;
 }
 
 @end

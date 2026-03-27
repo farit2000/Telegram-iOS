@@ -22,6 +22,8 @@ private func shareLink(for server: ProxyServerSettings) -> String {
     case let .socks5(username, password):
         link = "https://t.me/socks?server=\(server.host)&port=\(server.port)"
         link += "&user=\(username?.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryValueAllowed) ?? "")&pass=\(password?.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryValueAllowed) ?? "")"
+    case let .vless(uuid, publicKey, shortId, serverName):
+        link = "vless://\(uuid)@\(server.host):\(server.port)?security=reality&pbk=\(publicKey)&sid=\(shortId)&sni=\(serverName)&fp=chrome&type=tcp&flow=xtls-rprx-vision"
     }
     return link
 }
@@ -52,6 +54,7 @@ private enum ProxySettingsEntry: ItemListNodeEntry {
     
     case modeSocks5(PresentationTheme, String, Bool)
     case modeMtp(PresentationTheme, String, Bool)
+    case modeVless(PresentationTheme, String, Bool)
     
     case connectionHeader(PresentationTheme, String)
     case connectionServer(PresentationTheme, PresentationStrings, String, String)
@@ -61,6 +64,10 @@ private enum ProxySettingsEntry: ItemListNodeEntry {
     case credentialsUsername(PresentationTheme, PresentationStrings, String, String)
     case credentialsPassword(PresentationTheme, PresentationStrings, String, String)
     case credentialsSecret(PresentationTheme, PresentationStrings, String, String)
+    case credentialsUuid(PresentationTheme, PresentationStrings, String, String)
+    case credentialsPublicKey(PresentationTheme, PresentationStrings, String, String)
+    case credentialsShortId(PresentationTheme, PresentationStrings, String, String)
+    case credentialsServerName(PresentationTheme, PresentationStrings, String, String)
     
     case share(PresentationTheme, String, Bool)
     
@@ -68,11 +75,11 @@ private enum ProxySettingsEntry: ItemListNodeEntry {
         switch self {
             case .usePasteboardSettings, .usePasteboardInfo:
                 return ProxySettingsSection.pasteboard.rawValue
-            case .modeSocks5, .modeMtp:
+            case .modeSocks5, .modeMtp, .modeVless:
                 return ProxySettingsSection.mode.rawValue
             case .connectionHeader, .connectionServer, .connectionPort:
                 return ProxySettingsSection.connection.rawValue
-            case .credentialsHeader, .credentialsUsername, .credentialsPassword, .credentialsSecret:
+            case .credentialsHeader, .credentialsUsername, .credentialsPassword, .credentialsSecret, .credentialsUuid, .credentialsPublicKey, .credentialsShortId, .credentialsServerName:
                 return ProxySettingsSection.credentials.rawValue
             case .share:
                 return ProxySettingsSection.share.rawValue
@@ -89,22 +96,32 @@ private enum ProxySettingsEntry: ItemListNodeEntry {
                 return 2
             case .modeMtp:
                 return 3
-            case .connectionHeader:
+            case .modeVless:
                 return 4
-            case .connectionServer:
+            case .connectionHeader:
                 return 5
-            case .connectionPort:
+            case .connectionServer:
                 return 6
-            case .credentialsHeader:
+            case .connectionPort:
                 return 7
-            case .credentialsUsername:
+            case .credentialsHeader:
                 return 8
-            case .credentialsPassword:
+            case .credentialsUsername:
                 return 9
-            case .credentialsSecret:
+            case .credentialsPassword:
                 return 10
-            case .share:
+            case .credentialsSecret:
+                return 11
+            case .credentialsUuid:
                 return 12
+            case .credentialsPublicKey:
+                return 13
+            case .credentialsShortId:
+                return 14
+            case .credentialsServerName:
+                return 15
+            case .share:
+                return 16
         }
     }
     
@@ -181,6 +198,46 @@ private enum ProxySettingsEntry: ItemListNodeEntry {
                         return state
                     }
                 }, action: {})
+            case let .modeVless(_, text, value):
+                return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: text, style: .left, checked: value, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                    arguments.updateState { state in
+                        var state = state
+                        state.mode = .vless
+                        return state
+                    }
+                })
+            case let .credentialsUuid(_, _, placeholder, text):
+                return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), sectionId: self.section, textUpdated: { value in
+                    arguments.updateState { current in
+                        var state = current
+                        state.vlessUuid = value
+                        return state
+                    }
+                }, action: {})
+            case let .credentialsPublicKey(_, _, placeholder, text):
+                return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), sectionId: self.section, textUpdated: { value in
+                    arguments.updateState { current in
+                        var state = current
+                        state.vlessPublicKey = value
+                        return state
+                    }
+                }, action: {})
+            case let .credentialsShortId(_, _, placeholder, text):
+                return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), sectionId: self.section, textUpdated: { value in
+                    arguments.updateState { current in
+                        var state = current
+                        state.vlessShortId = value
+                        return state
+                    }
+                }, action: {})
+            case let .credentialsServerName(_, _, placeholder, text):
+                return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), sectionId: self.section, textUpdated: { value in
+                    arguments.updateState { current in
+                        var state = current
+                        state.vlessServerName = value
+                        return state
+                    }
+                }, action: {})
             case let .share(_, text, enabled):
                 return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: enabled ? .generic : .disabled, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                     arguments.share()
@@ -192,6 +249,7 @@ private enum ProxySettingsEntry: ItemListNodeEntry {
 private enum ProxyServerSettingsControllerMode {
     case socks5
     case mtp
+    case vless
 }
 
 private struct ProxyServerSettingsControllerState: Equatable {
@@ -201,7 +259,11 @@ private struct ProxyServerSettingsControllerState: Equatable {
     var username: String
     var password: String
     var secret: String
-    
+    var vlessUuid: String
+    var vlessPublicKey: String
+    var vlessShortId: String
+    var vlessServerName: String
+
     var isComplete: Bool {
         if self.host.isEmpty || self.port.isEmpty || Int(self.port) == nil {
             return false
@@ -212,6 +274,10 @@ private struct ProxyServerSettingsControllerState: Equatable {
             case .mtp:
                 let secretIsValid = MTProxySecret.parse(self.secret) != nil
                 if !secretIsValid {
+                    return false
+                }
+            case .vless:
+                if self.vlessUuid.isEmpty || self.vlessPublicKey.isEmpty || self.vlessServerName.isEmpty {
                     return false
                 }
         }
@@ -228,6 +294,7 @@ private func proxyServerSettingsControllerEntries(presentationData: Presentation
     
     entries.append(.modeSocks5(presentationData.theme, presentationData.strings.SocksProxySetup_ProxySocks5, state.mode == .socks5))
     entries.append(.modeMtp(presentationData.theme, presentationData.strings.SocksProxySetup_ProxyTelegram, state.mode == .mtp))
+    entries.append(.modeVless(presentationData.theme, "VLESS", state.mode == .vless))
     
     entries.append(.connectionHeader(presentationData.theme, presentationData.strings.SocksProxySetup_Connection.uppercased()))
     entries.append(.connectionServer(presentationData.theme, presentationData.strings, presentationData.strings.SocksProxySetup_Hostname, state.host))
@@ -241,6 +308,12 @@ private func proxyServerSettingsControllerEntries(presentationData: Presentation
         case .mtp:
             entries.append(.credentialsHeader(presentationData.theme, presentationData.strings.SocksProxySetup_RequiredCredentials))
             entries.append(.credentialsSecret(presentationData.theme, presentationData.strings, presentationData.strings.SocksProxySetup_SecretPlaceholder, state.secret))
+        case .vless:
+            entries.append(.credentialsHeader(presentationData.theme, "VLESS REALITY"))
+            entries.append(.credentialsUuid(presentationData.theme, presentationData.strings, "UUID", state.vlessUuid))
+            entries.append(.credentialsPublicKey(presentationData.theme, presentationData.strings, "Public Key", state.vlessPublicKey))
+            entries.append(.credentialsShortId(presentationData.theme, presentationData.strings, "Short ID", state.vlessShortId))
+            entries.append(.credentialsServerName(presentationData.theme, presentationData.strings, "SNI (Server Name)", state.vlessServerName))
     }
     
     entries.append(.share(presentationData.theme, presentationData.strings.Conversation_ContextMenuShare, state.isComplete))
@@ -258,6 +331,8 @@ private func proxyServerSettings(with state: ProxyServerSettingsControllerState)
                 if let parsedSecret = parsedSecret {
                     return ProxyServerSettings(host: state.host, port: port, connection: .mtp(secret: parsedSecret.serialize()))
                 }
+            case .vless:
+                return ProxyServerSettings(host: state.host, port: port, connection: .vless(uuid: state.vlessUuid, publicKey: state.vlessPublicKey, shortId: state.vlessShortId, serverName: state.vlessServerName))
         }
     }
     return nil
@@ -273,6 +348,10 @@ func proxyServerSettingsController(sharedContext: SharedAccountContext, context:
     var currentUsername: String?
     var currentPassword: String?
     var currentSecret: String?
+    var currentVlessUuid: String?
+    var currentVlessPublicKey: String?
+    var currentVlessShortId: String?
+    var currentVlessServerName: String?
     var pasteboardSettings: ProxyServerSettings?
     if let currentSettings = currentSettings {
         switch currentSettings.connection {
@@ -283,6 +362,12 @@ func proxyServerSettingsController(sharedContext: SharedAccountContext, context:
             case let .mtp(secret):
                 currentSecret = hexString(secret)
                 currentMode = .mtp
+            case let .vless(uuid, publicKey, shortId, serverName):
+                currentVlessUuid = uuid
+                currentVlessPublicKey = publicKey
+                currentVlessShortId = shortId
+                currentVlessServerName = serverName
+                currentMode = .vless
         }
     } else {
         if let proxy = parseProxyUrl(sharedContext: sharedContext, url: UIPasteboard.general.string ?? "") {
@@ -294,7 +379,7 @@ func proxyServerSettingsController(sharedContext: SharedAccountContext, context:
         }
     }
 
-    let initialState = ProxyServerSettingsControllerState(mode: currentMode, host: currentSettings?.host ?? "", port: (currentSettings?.port).flatMap { "\($0)" } ?? "", username: currentUsername ?? "", password: currentPassword ?? "", secret: currentSecret ?? "")
+    let initialState = ProxyServerSettingsControllerState(mode: currentMode, host: currentSettings?.host ?? "", port: (currentSettings?.port).flatMap { "\($0)" } ?? "", username: currentUsername ?? "", password: currentPassword ?? "", secret: currentSecret ?? "", vlessUuid: currentVlessUuid ?? "", vlessPublicKey: currentVlessPublicKey ?? "", vlessShortId: currentVlessShortId ?? "", vlessServerName: currentVlessServerName ?? "")
     let stateValue = Atomic(value: initialState)
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     let updateState: ((ProxyServerSettingsControllerState) -> ProxyServerSettingsControllerState) -> Void = { f in
@@ -324,6 +409,12 @@ func proxyServerSettingsController(sharedContext: SharedAccountContext, context:
                     case let .mtp(secret):
                         state.mode = .mtp
                         state.secret = hexString(secret)
+                    case let .vless(uuid, publicKey, shortId, serverName):
+                        state.mode = .vless
+                        state.vlessUuid = uuid
+                        state.vlessPublicKey = publicKey
+                        state.vlessShortId = shortId
+                        state.vlessServerName = serverName
                 }
                 return state
             }

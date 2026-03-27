@@ -13,6 +13,7 @@ import TelegramCallsUI
 import TelegramVoip
 import BuildConfig
 import BuildConfigExtra
+import VlessTransport
 import DeviceCheck
 import AccountContext
 import OverlayStatusController
@@ -624,7 +625,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 }).startStandalone(next: subscriber.putNext, error: subscriber.putError, completed: subscriber.putCompletion)
             }
             |> runOn(Queue.mainQueue())
-        }, autolockDeadine: autolockDeadine, encryptionProvider: OpenSSLEncryptionProvider(), deviceModelName: nil, useBetaFeatures: !buildConfig.isAppStoreBuild, isICloudEnabled: buildConfig.isICloudEnabled)
+        }, autolockDeadine: autolockDeadine, encryptionProvider: OpenSSLEncryptionProvider(), deviceModelName: nil, useBetaFeatures: !buildConfig.isAppStoreBuild, isICloudEnabled: buildConfig.isICloudEnabled, vlessConnectFd: { serverHost, serverPort, uuid, publicKey, shortId, serverName, destHost, destPort in
+            return Int32(VlessConnectHelper.startProxy(withServerHost: serverHost, serverPort: serverPort, uuid: uuid, publicKey: publicKey, shortId: shortId, serverName: serverName, destHost: destHost, destPort: destPort))
+        })
         
         guard let appGroupUrl = maybeAppGroupUrl else {
             self.mainWindow?.presentNative(UIAlertController(title: nil, message: "Error 2", preferredStyle: .alert))

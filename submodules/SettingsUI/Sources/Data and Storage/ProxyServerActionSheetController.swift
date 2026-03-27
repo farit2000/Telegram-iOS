@@ -181,6 +181,8 @@ private final class ProxyServerInfoItemNode: ActionSheetItemNode {
                 passwordTextNode.displaysAsynchronously = false
                 passwordTextNode.attributedText = NSAttributedString(string: "•••••", font: textFont, textColor: theme.primaryTextColor)
                 fieldNodes.append((passwordTitleNode, passwordTextNode))
+            case .vless:
+                break
         }
         
         let statusTitleNode = ImmediateTextNode()

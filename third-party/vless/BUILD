@@ -1,0 +1,33 @@
+cc_library(
+    name = "vless",
+    srcs = [
+        "src/vless.c",
+        "src/vless_reality.c",
+        "src/vless_pool.c",
+    ],
+    hdrs = ["include/vless.h"],
+    textual_hdrs = ["src/vless_internal.h"],
+    copts = [
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-Wshadow",
+        "-Wformat=2",
+        "-Wstrict-prototypes",
+        "-Wmissing-prototypes",
+        "-Wdouble-promotion",
+        "-Wnull-dereference",
+        "-Wimplicit-fallthrough",
+        "-Werror=format-security",
+        "-Wno-unused-parameter",
+        "-fstack-protector-strong",
+        "-fvisibility=hidden",
+    ],
+    includes = ["include", "src"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//third-party/boringssl:ssl",
+        "//third-party/boringssl:crypto",
+    ],
+)

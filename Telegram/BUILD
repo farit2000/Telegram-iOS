@@ -1703,16 +1703,11 @@ plist_fragment(
     )
 )
 
-local_provisioning_profile(
-    name = "Telegram_local_profile",
-    profile_name = "iOS Team Provisioning Profile: {}".format(telegram_bundle_id),
-    team_id = telegram_team_id,
-)
-
 xcode_provisioning_profile(
    name = "Telegram_xcode_profile",
    managed_by_xcode = True,
-   provisioning_profile = ":Telegram_local_profile",
+   provisioning_profile = "DummyProfile.mobileprovision",
+   team_id = telegram_team_id,
 )
 
 ios_application(

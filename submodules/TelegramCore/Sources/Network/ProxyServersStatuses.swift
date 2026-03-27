@@ -15,7 +15,12 @@ private final class ProxyServerItemContext {
     
     init(queue: Queue, context: MTContext, datacenterId: Int, server: ProxyServerSettings, updated: @escaping (ProxyServerStatus) -> Void) {
         self.disposable = (Signal<ProxyServerStatus, NoError> { subscriber in
-            let disposable = MTProxyConnectivity.pingProxy(with: context, datacenterId: datacenterId, settings: server.mtProxySettings).start(next: { next in
+            guard let settings = server.mtProxySettings else {
+                subscriber.putNext(.notAvailable)
+                subscriber.putCompletion()
+                return EmptyDisposable
+            }
+            let disposable = MTProxyConnectivity.pingProxy(with: context, datacenterId: datacenterId, settings: settings).start(next: { next in
                 if let next = next as? MTProxyConnectivityStatus {
                     if !next.reachable {
                         subscriber.putNext(.notAvailable)

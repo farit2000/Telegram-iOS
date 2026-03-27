@@ -31,6 +31,20 @@
 
 @end
 
+@interface MTVlessProxySettings : NSObject
+
+@property (nonatomic, strong, readonly) NSString * _Nonnull ip;
+@property (nonatomic, readonly) uint16_t port;
+@property (nonatomic, strong, readonly) NSString * _Nonnull uuid;
+@property (nonatomic, strong, readonly) NSString * _Nonnull publicKey;
+@property (nonatomic, strong, readonly) NSString * _Nonnull shortId;
+@property (nonatomic, strong, readonly) NSString * _Nonnull serverName;
+@property (nonatomic, copy, readonly) int (^ _Nullable connectFd)(NSString * _Nonnull destHost, uint16_t destPort);
+
+- (instancetype _Nonnull)initWithIp:(NSString * _Nonnull)ip port:(uint16_t)port uuid:(NSString * _Nonnull)uuid publicKey:(NSString * _Nonnull)publicKey shortId:(NSString * _Nonnull)shortId serverName:(NSString * _Nonnull)serverName connectFd:(int (^ _Nullable)(NSString * _Nonnull destHost, uint16_t destPort))connectFd;
+
+@end
+
 @interface MTSocksProxySettings : NSObject
 
 @property (nonatomic, strong, readonly) NSString * _Nonnull ip;
@@ -74,15 +88,21 @@
 @property (nonatomic) NSString * _Nullable accessHostOverride;
 
 @property (nonatomic, strong, readonly) MTSocksProxySettings * _Nullable socksProxySettings;
+@property (nonatomic, strong, readonly) MTVlessProxySettings * _Nullable vlessProxySettings;
 @property (nonatomic, strong, readonly) MTNetworkSettings * _Nullable networkSettings;
 
 @property (nonatomic, copy) void (^ _Nullable passwordInputHandler)(void);
 
 - (MTApiEnvironment * _Nonnull)withUpdatedLangPackCode:(NSString * _Nullable)langPackCode;
 - (MTApiEnvironment * _Nonnull)withUpdatedSocksProxySettings:(MTSocksProxySettings * _Nullable)socksProxySettings;
+- (MTApiEnvironment * _Nonnull)withUpdatedVlessProxySettings:(MTVlessProxySettings * _Nullable)vlessProxySettings;
 - (MTApiEnvironment * _Nonnull)withUpdatedNetworkSettings:(MTNetworkSettings * _Nullable)networkSettings;
 - (MTApiEnvironment * _Nonnull)withUpdatedSystemCode:(NSData * _Nullable)systemCode;
 
 -(id _Nonnull)initWithDeviceModelName:(NSString * _Nullable)deviceModelName;
+
+// Global VLESS connect callback — set once from app, used by all MTTcpConnections
++ (void)setGlobalVlessConnectFd:(int (^ _Nullable)(NSString * _Nonnull destHost, uint16_t destPort))block;
++ (int (^ _Nullable)(NSString * _Nonnull, uint16_t))globalVlessConnectFd;
 
 @end

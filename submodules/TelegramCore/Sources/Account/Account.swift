@@ -210,8 +210,46 @@ public class UnauthorizedAccount {
         })
         
         self.stateManager.reset()
+
+        // Observe proxy settings changes for unauthorized state
+        let _ = (accountManager.sharedData(keys: [SharedDataKeys.proxySettings])
+        |> map { sharedData -> ProxyServerSettings? in
+            if let settings = sharedData.entries[SharedDataKeys.proxySettings]?.get(ProxySettings.self) {
+                return settings.effectiveActiveServer
+            } else {
+                return nil
+            }
+        }
+        |> distinctUntilChanged).start(next: { [weak network] activeServer in
+            guard let network = network else { return }
+            let updatedSocks = activeServer.flatMap { $0.mtProxySettings }
+            let updatedVless = activeServer.flatMap { $0.mtVlessProxySettings(connectFd: self.networkArguments.vlessConnectFd) }
+            network.context.updateApiEnvironment { environment in
+                let currentSocks = environment?.socksProxySettings
+                let currentVless = environment?.vlessProxySettings
+                var updateNetwork = false
+                if let currentSocks = currentSocks, let updatedSocks = updatedSocks {
+                    if !currentSocks.isEqual(updatedSocks) { updateNetwork = true }
+                } else if (currentSocks != nil) != (updatedSocks != nil) {
+                    updateNetwork = true
+                }
+                if let currentVless = currentVless, let updatedVless = updatedVless {
+                    if !currentVless.isEqual(updatedVless) { updateNetwork = true }
+                } else if (currentVless != nil) != (updatedVless != nil) {
+                    updateNetwork = true
+                }
+                if updateNetwork {
+                    network.dropConnectionStatus()
+                    var env = environment?.withUpdatedSocksProxySettings(updatedSocks)
+                    env = env?.withUpdatedVlessProxySettings(updatedVless)
+                    return env
+                } else {
+                    return nil
+                }
+            }
+        })
     }
-    
+
     public func changedMasterDatacenterId(accountManager: AccountManager<TelegramAccountManagerTypes>, masterDatacenterId: Int32) -> Signal<UnauthorizedAccount, NoError> {
         if masterDatacenterId == Int32(self.network.mtProto.datacenterId) {
             return .single(self)
@@ -1492,20 +1530,29 @@ public class Account {
             }
         }
         |> distinctUntilChanged).start(next: { activeServer in
-            let updated = activeServer.flatMap { activeServer -> MTSocksProxySettings? in
-                return activeServer.mtProxySettings
-            }
+            NSLog("[VLESS-DEBUG] proxy changed: activeServer=\(String(describing: activeServer))")
+            let updatedSocks = activeServer.flatMap { $0.mtProxySettings }
+            let updatedVless = activeServer.flatMap { $0.mtVlessProxySettings(connectFd: self.networkArguments.vlessConnectFd) }
+            NSLog("[VLESS-DEBUG] updatedVless=\(String(describing: updatedVless)), updatedSocks=\(String(describing: updatedSocks))")
             network.context.updateApiEnvironment { environment in
-                let current = environment?.socksProxySettings
-                let updateNetwork: Bool
-                if let current = current, let updated = updated {
-                    updateNetwork = !current.isEqual(updated)
-                } else {
-                    updateNetwork = (current != nil) != (updated != nil)
+                let currentSocks = environment?.socksProxySettings
+                let currentVless = environment?.vlessProxySettings
+                var updateNetwork = false
+                if let currentSocks = currentSocks, let updatedSocks = updatedSocks {
+                    if !currentSocks.isEqual(updatedSocks) { updateNetwork = true }
+                } else if (currentSocks != nil) != (updatedSocks != nil) {
+                    updateNetwork = true
+                }
+                if let currentVless = currentVless, let updatedVless = updatedVless {
+                    if !currentVless.isEqual(updatedVless) { updateNetwork = true }
+                } else if (currentVless != nil) != (updatedVless != nil) {
+                    updateNetwork = true
                 }
                 if updateNetwork {
                     network.dropConnectionStatus()
-                    return environment?.withUpdatedSocksProxySettings(updated)
+                    var env = environment?.withUpdatedSocksProxySettings(updatedSocks)
+                    env = env?.withUpdatedVlessProxySettings(updatedVless)
+                    return env
                 } else {
                     return nil
                 }

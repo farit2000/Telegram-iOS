@@ -946,6 +946,8 @@ public final class OngoingCallContext {
                         voipProxyServer = VoipProxyServerWebrtc(host: proxyServer.host, port: proxyServer.port, username: username, password: password)
                     case .mtp:
                         break
+                    case .vless:
+                        break
                     }
                 }
                 

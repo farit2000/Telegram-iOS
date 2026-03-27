@@ -347,7 +347,7 @@ final class NetworkFrameworkTcpConnectionInterface: NSObject, MTTcpConnectionInt
             impl.disconnect()
         }
     }
-    
+
     func resetDelegate() {
         self.impl.with { impl in
             impl.resetDelegate()

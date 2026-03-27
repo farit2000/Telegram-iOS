@@ -4,6 +4,7 @@ import TelegramApi
 import SwiftSignalKit
 import MtProtoKit
 import NetworkLogging
+import os
 
 #if os(iOS)
     import CloudData
@@ -441,8 +442,10 @@ public struct NetworkInitializationArguments {
     public let deviceModelName: String?
     public let useBetaFeatures: Bool
     public let isICloudEnabled: Bool
-    
-    public init(apiId: Int32, apiHash: String, languagesCategory: String, appVersion: String, voipMaxLayer: Int32, voipVersions: [CallSessionManagerImplementationVersion], appData: Signal<Data?, NoError>, externalRequestVerificationStream: Signal<[String: String], NoError>, externalRecaptchaRequestVerification: @escaping (String, String) -> Signal<String?, NoError>, autolockDeadine: Signal<Int32?, NoError>, encryptionProvider: EncryptionProvider, deviceModelName: String?, useBetaFeatures: Bool, isICloudEnabled: Bool) {
+    // VLESS: callback that creates a tunneled fd. Args: (serverHost, serverPort, uuid, publicKey, shortId, serverName, destHost, destPort) -> fd or -1
+    public let vlessConnectFd: ((String, UInt16, String, String, String, String, String, UInt16) -> Int32)?
+
+    public init(apiId: Int32, apiHash: String, languagesCategory: String, appVersion: String, voipMaxLayer: Int32, voipVersions: [CallSessionManagerImplementationVersion], appData: Signal<Data?, NoError>, externalRequestVerificationStream: Signal<[String: String], NoError>, externalRecaptchaRequestVerification: @escaping (String, String) -> Signal<String?, NoError>, autolockDeadine: Signal<Int32?, NoError>, encryptionProvider: EncryptionProvider, deviceModelName: String?, useBetaFeatures: Bool, isICloudEnabled: Bool, vlessConnectFd: ((String, UInt16, String, String, String, String, String, UInt16) -> Int32)? = nil) {
         self.apiId = apiId
         self.apiHash = apiHash
         self.languagesCategory = languagesCategory
@@ -457,6 +460,7 @@ public struct NetworkInitializationArguments {
         self.deviceModelName = deviceModelName
         self.useBetaFeatures = useBetaFeatures
         self.isICloudEnabled = isICloudEnabled
+        self.vlessConnectFd = vlessConnectFd
     }
 }
 #if os(iOS)
@@ -479,8 +483,14 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             apiEnvironment.disableUpdates = supplementary
             apiEnvironment = apiEnvironment.withUpdatedLangPackCode(languageCode ?? "en")
             
+            NSLog("[VLESS-NET] proxySettings=\(String(describing: proxySettings)), effectiveActive=\(String(describing: proxySettings?.effectiveActiveServer))")
             if let effectiveActiveServer = proxySettings?.effectiveActiveServer {
-                apiEnvironment = apiEnvironment.withUpdatedSocksProxySettings(effectiveActiveServer.mtProxySettings)
+                if let socksSettings = effectiveActiveServer.mtProxySettings {
+                    apiEnvironment = apiEnvironment.withUpdatedSocksProxySettings(socksSettings)
+                }
+                if let vlessSettings = effectiveActiveServer.mtVlessProxySettings(connectFd: arguments.vlessConnectFd) {
+                    apiEnvironment = apiEnvironment.withUpdatedVlessProxySettings(vlessSettings)
+                }
             }
             
             apiEnvironment = apiEnvironment.withUpdatedNetworkSettings((networkSettings ?? NetworkSettings.defaultSettings).mtNetworkSettings)
@@ -506,7 +516,7 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             let useTempAuthKeys: Bool = true
             
             let context = MTContext(serialization: serialization, encryptionProvider: arguments.encryptionProvider, apiEnvironment: apiEnvironment, isTestingEnvironment: testingEnvironment, useTempAuthKeys: useTempAuthKeys)
-            
+
             if let networkSettings = networkSettings {
                 let useNetworkFramework: Bool
                 if let customValue = networkSettings.useNetworkFramework {
@@ -516,7 +526,7 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
                 } else {
                     useNetworkFramework = false
                 }
-                
+
                 if useNetworkFramework {
                     if #available(iOS 12.0, macOS 14.0, *) {
                         context.makeTcpConnectionInterface = { delegate, delegateQueue in
@@ -525,7 +535,10 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
                     }
                 }
             }
-            
+
+            // VLESS: connectFd is embedded in MTVlessProxySettings on apiEnvironment.
+            // MTTcpConnection reads it from vlessSettings.connectFd.
+
             let seedAddressList: [Int: [String]]
             
             if testingEnvironment {
