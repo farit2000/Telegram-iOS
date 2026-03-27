@@ -968,15 +968,5 @@ NSString *suffix = @"";
     return result;
 }
 
-static int (^_globalVlessConnectFd)(NSString *, uint16_t) = nil;
-
-+ (void)setGlobalVlessConnectFd:(int (^)(NSString *, uint16_t))block {
-    _globalVlessConnectFd = [block copy];
-}
-
-+ (int (^)(NSString *, uint16_t))globalVlessConnectFd {
-    return _globalVlessConnectFd;
-}
-
 @end
 

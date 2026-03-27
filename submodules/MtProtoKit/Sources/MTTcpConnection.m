@@ -11,8 +11,6 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <CommonCrypto/CommonHMac.h>
 #import <Security/SecRandom.h>
-#import <os/log.h>
-
 #import <MtProtoKit/MTInternalId.h>
 
 #import <MtProtoKit/MTContext.h>
@@ -844,7 +842,6 @@ struct ctr_state {
             if (_vlessSettings != nil) {
                 _vlessConnectFd = _vlessSettings.connectFd;
             }
-            os_log(OS_LOG_DEFAULT, "[VLESS] init: vlessSettings=%d connectFd=%d ctx=%p", _vlessSettings != nil, _vlessConnectFd != nil, context);
         } else if (context.apiEnvironment.socksProxySettings != nil) {
             if (context.apiEnvironment.socksProxySettings.secret != nil) {
                 _mtpIp = context.apiEnvironment.socksProxySettings.ip;
@@ -1015,7 +1012,7 @@ struct ctr_state {
 
                         if (listenPort == 0) {
                             [strongSelf closeAndNotifyWithError:true];
-                        } else if (![strongSelf->_socket connectToHost:@"127.0.0.1" onPort:listenPort viaInterface:nil withTimeout:30 error:&error] || error != nil) {
+                        } else if (![strongSelf->_socket connectToHost:@"127.0.0.1" onPort:listenPort viaInterface:nil withTimeout:5 error:&error] || error != nil) {
                             [strongSelf closeAndNotifyWithError:true];
                         } else {
                             strongSelf->_readyToSendData = true;
@@ -1343,7 +1340,6 @@ struct ctr_state {
     
     [[MTTcpConnection tcpQueue] dispatchOnQueue:^{
         [_pendingDataQueue addObject:[[MTTcpSendData alloc] initWithDataSet:datas completion:completion requestQuickAck:requestQuickAck expectDataInResponse:expectDataInResponse]];
-        os_log(OS_LOG_DEFAULT, "[VLESS-SEND] sendDatas: readyToSend=%d queueSize=%lu vless=%d", _readyToSendData, (unsigned long)_pendingDataQueue.count, _vlessConnectFd != nil);
         if (_readyToSendData) {
             [self sendDataIfNeeded];
         }

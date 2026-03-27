@@ -101,8 +101,4 @@
 
 -(id _Nonnull)initWithDeviceModelName:(NSString * _Nullable)deviceModelName;
 
-// Global VLESS connect callback — set once from app, used by all MTTcpConnections
-+ (void)setGlobalVlessConnectFd:(int (^ _Nullable)(NSString * _Nonnull destHost, uint16_t destPort))block;
-+ (int (^ _Nullable)(NSString * _Nonnull, uint16_t))globalVlessConnectFd;
-
 @end

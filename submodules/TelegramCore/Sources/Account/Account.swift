@@ -1530,10 +1530,8 @@ public class Account {
             }
         }
         |> distinctUntilChanged).start(next: { activeServer in
-            NSLog("[VLESS-DEBUG] proxy changed: activeServer=\(String(describing: activeServer))")
             let updatedSocks = activeServer.flatMap { $0.mtProxySettings }
             let updatedVless = activeServer.flatMap { $0.mtVlessProxySettings(connectFd: self.networkArguments.vlessConnectFd) }
-            NSLog("[VLESS-DEBUG] updatedVless=\(String(describing: updatedVless)), updatedSocks=\(String(describing: updatedSocks))")
             network.context.updateApiEnvironment { environment in
                 let currentSocks = environment?.socksProxySettings
                 let currentVless = environment?.vlessProxySettings

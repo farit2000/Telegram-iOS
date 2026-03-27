@@ -24,7 +24,7 @@
     config.reality.fingerprint = VLESS_CHROME_AUTO;
     config.vision_enabled = 1;
     config.connect_timeout_ms = 5000;
-    config.io_timeout_ms = 90000;
+    config.io_timeout_ms = 45000;
 
     uint16_t port = 0;
     int rc = vless_listen_start(&config, &port);

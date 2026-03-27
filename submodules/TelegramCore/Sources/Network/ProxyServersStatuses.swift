@@ -16,7 +16,11 @@ private final class ProxyServerItemContext {
     init(queue: Queue, context: MTContext, datacenterId: Int, server: ProxyServerSettings, updated: @escaping (ProxyServerStatus) -> Void) {
         self.disposable = (Signal<ProxyServerStatus, NoError> { subscriber in
             guard let settings = server.mtProxySettings else {
-                subscriber.putNext(.notAvailable)
+                if case .vless = server.connection {
+                    subscriber.putNext(.available(0))
+                } else {
+                    subscriber.putNext(.notAvailable)
+                }
                 subscriber.putCompletion()
                 return EmptyDisposable
             }

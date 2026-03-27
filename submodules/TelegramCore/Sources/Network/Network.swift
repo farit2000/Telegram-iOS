@@ -483,7 +483,6 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             apiEnvironment.disableUpdates = supplementary
             apiEnvironment = apiEnvironment.withUpdatedLangPackCode(languageCode ?? "en")
             
-            NSLog("[VLESS-NET] proxySettings=\(String(describing: proxySettings)), effectiveActive=\(String(describing: proxySettings?.effectiveActiveServer))")
             if let effectiveActiveServer = proxySettings?.effectiveActiveServer {
                 if let socksSettings = effectiveActiveServer.mtProxySettings {
                     apiEnvironment = apiEnvironment.withUpdatedSocksProxySettings(socksSettings)
